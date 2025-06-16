@@ -1,55 +1,96 @@
 // frontend/src/pages/UserDashboardPage.js
-import React from 'react';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import axiosClient from '../api/axiosClient'; // Import axiosClient untuk fetch data
+import RecentActivityCard from '../components/user/RecentActivityCard'; // Import komponen baru
 
 const UserDashboardPage = () => {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
+    const [recentActivities, setRecentActivities] = useState([]);
+    const [loadingActivities, setLoadingActivities] = useState(true);
+    const [activityError, setActivityError] = useState('');
+
+    useEffect(() => {
+        const fetchRecentActivities = async () => {
+            if (!user) { // Pastikan user sudah ada (login)
+                setLoadingActivities(false);
+                return;
+            }
+            try {
+                setLoadingActivities(true);
+                setActivityError('');
+                const response = await axiosClient.get('/bookings/recent'); // Panggil endpoint baru
+                setRecentActivities(response.data);
+            } catch (err) {
+                console.error('Gagal mengambil aktivitas terbaru:', err);
+                setActivityError(err.response?.data?.message || 'Gagal memuat aktivitas terbaru.');
+            } finally {
+                setLoadingActivities(false);
+            }
+        };
+
+        fetchRecentActivities();
+    }, [user]); // Re-fetch jika user berubah (misal setelah login)
+
+    if (authLoading) {
+        return <LoadingSpinner message="Memuat dashboard pengguna..." />;
+    }
+
+    if (!user) {
+        // Redireksi akan ditangani oleh DashboardLayout di App.js
+        return null;
+    }
 
     return (
         <div className="container p-4">
-            <p className="subtitle is-4 has-text-light mb-5">
-                Welcome, <strong className="has-text-primary is-capitalized">{user?.name || user?.username}</strong>!
-            </p>
+            <h1 className="title is-2 has-text-light mb-4">Selamat Datang, {user.name || user.username}!</h1>
 
+            {/* Dashboard Cards (My Cars, Book New Service, My Bookings) */}
             <div className="columns is-multiline">
-                <div className="column is-one-third">
-                    <div className="box has-background-dark p-5">
-                        <p className="title is-4 has-text-light">My Cars</p>
-                        <p className="subtitle is-6 has-text-grey-light">Manage your registered vehicles.</p>
-                        <Link to="/user/my-cars" className="button is-primary is-small is-rounded">
-                            View My Cars
+                <div className="column is-4">
+                    <div className="card has-background-dark-lighter has-text-light p-4">
+                        <h2 className="title is-5 has-text-light">Mobil Saya</h2>
+                        <p className="subtitle is-6 has-text-grey-light">Kelola kendaraan Anda yang terdaftar.</p>
+                        <Link to="/user/my-cars" className="button is-primary is-small">
+                            Lihat Mobil Saya
                         </Link>
                     </div>
                 </div>
-                <div className="column is-one-third">
-                    <div className="box has-background-dark p-5">
-                        <p className="title is-4 has-text-light">Book New Service</p>
-                        <p className="subtitle is-6 has-text-grey-light">Schedule a new maintenance or repair appointment.</p>
-                        <Link to="/user/book-service" className="button is-success is-small is-rounded">
-                            Book Now
+                <div className="column is-4">
+                    <div className="card has-background-dark-lighter has-text-light p-4">
+                        <h2 className="title is-5 has-text-light">Pesan Layanan Baru</h2>
+                        <p className="subtitle is-6 has-text-grey-light">Jadwalkan janji temu perawatan atau perbaikan.</p>
+                        <Link to="/user/book-service" className="button is-primary is-small">
+                            Pesan Sekarang
                         </Link>
                     </div>
                 </div>
-                <div className="column is-one-third">
-                    <div className="box has-background-dark p-5">
-                        <p className="title is-4 has-text-light">My Bookings</p>
-                        <p className="subtitle is-6 has-text-grey-light">View your past and upcoming service appointments.</p>
-                        <Link to="/user/my-bookings" className="button is-primary is-small is-rounded">
-                            View Bookings
+                <div className="column is-4">
+                    <div className="card has-background-dark-lighter has-text-light p-4">
+                        <h2 className="title is-5 has-text-light">Booking Saya</h2>
+                        <p className="subtitle is-6 has-text-grey-light">Lihat janji temu layanan Anda yang lalu dan yang akan datang.</p>
+                        <Link to="/user/my-bookings" className="button is-primary is-small">
+                            Lihat Booking
                         </Link>
                     </div>
                 </div>
             </div>
 
-            <div className="box has-background-dark p-5 mt-5">
-                <h3 className="title is-4 has-text-light">Recent Activity (Placeholder)</h3>
-                <p className="has-text-grey-light">This section will show your recent service history and updates.</p>
-                <ul>
-                    <li className="has-text-grey-light mt-3"><span className="icon mr-2"><i className="fas fa-calendar-alt"></i></span>Last Service: <strong>[N/A]</strong></li>
-                    <li className="has-text-grey-light"><span className="icon mr-2"><i className="fas fa-bell"></i></span>Notifications: <strong>[N/A]</strong></li>
-                </ul>
-            </div>
+            {/* Recent Activity Section */}
+            {loadingActivities ? (
+                <LoadingSpinner message="Memuat aktivitas terbaru..." />
+            ) : activityError ? (
+                <div className="box has-background-dark p-5 mt-5">
+                    <div className="notification is-danger is-light">
+                        <p>{activityError}</p>
+                        <button className="button is-small is-light mt-2" onClick={() => window.location.reload()}>Coba Lagi</button>
+                    </div>
+                </div>
+            ) : (
+                <RecentActivityCard activities={recentActivities} />
+            )}
         </div>
     );
 };

@@ -1,149 +1,207 @@
 // backend/controllers/CarController.js
 const Car = require('../models/CarModel');
-const User = require('../models/UserModel'); // Import User untuk relasi
+const User = require('../models/UserModel');
 const asyncHandler = require('express-async-handler');
+const { v4: uuidv4 } = require('uuid');
+const path = require('path'); // Import path untuk manipulasi path file
+const fs = require('fs'); // Import fs untuk menghapus file lama
 
-// @desc    Get all cars (Admin) or cars for specific user (User)
+// @desc    Get all cars for the logged-in user
 // @route   GET /api/cars
-// @access  Private (Admin can see all, User can see their own)
-const getCars = asyncHandler(async (req, res) => {
-    let cars;
-    if (req.user.role === 'admin') {
-        cars = await Car.findAll({
-            include: [{ model: User, as: 'user', attributes: ['userId', 'username', 'name', 'email'] }]
-        });
-    } else {
-        cars = await Car.findAll({
-            where: { userId: req.user.id }
-        });
-    }
-    res.json(cars);
+// @access  Private (User)
+const getMyCars = asyncHandler(async (req, res) => {
+    const cars = await Car.findAll({
+        where: { userId: req.user.id },
+        order: [['createdAt', 'DESC']]
+    });
+    // Jika perlu, sesuaikan imageUrl agar menjadi URL lengkap
+    const carsWithFullImageUrl = cars.map(car => {
+        if (car.imageUrl) {
+            // Asumsikan server berjalan di PORT, dan file disajikan dari /uploads
+            return {
+                ...car.toJSON(),
+                imageUrl: `${req.protocol}://${req.get('host')}/uploads/${path.basename(car.imageUrl)}`
+            };
+        }
+        return car.toJSON();
+    });
+    res.json(carsWithFullImageUrl);
 });
 
-// @desc    Get single car by ID
+// @desc    Get a single car by ID for the logged-in user
 // @route   GET /api/cars/:id
-// @access  Private (Admin can get any, User can get their own)
+// @access  Private (User)
 const getCarById = asyncHandler(async (req, res) => {
-    const car = await Car.findByPk(req.params.id, {
-        include: [{ model: User, as: 'user', attributes: ['userId', 'username', 'name', 'email'] }]
+    const car = await Car.findOne({
+        where: {
+            carId: req.params.id,
+            userId: req.user.id
+        }
     });
 
     if (car) {
-        if (req.user.role === 'admin' || car.userId === req.user.id) {
-            res.json(car);
-        } else {
-            res.status(403);
-            throw new Error('Not authorized to view this car');
+        // Sesuaikan imageUrl menjadi URL lengkap sebelum dikirim
+        const carData = car.toJSON();
+        if (carData.imageUrl) {
+            carData.imageUrl = `${req.protocol}://${req.get('host')}/uploads/${path.basename(carData.imageUrl)}`;
         }
+        res.json(carData);
     } else {
         res.status(404);
-        throw new Error('Car not found');
+        throw new Error('Mobil tidak ditemukan atau Anda tidak memiliki akses ke mobil ini.');
     }
 });
 
-// @desc    Add a new car
+// @desc    Create a new car for the logged-in user
 // @route   POST /api/cars
-// @access  Private/User (or Admin adding for a user)
-const addCar = asyncHandler(async (req, res) => {
-    const { userId, make, model, year, licensePlate, color } = req.body;
+// @access  Private (User)
+const createCar = asyncHandler(async (req, res) => {
+    const { make, model, year, licensePlate, color } = req.body;
+    const imageUrl = req.file ? req.file.path : null; // Ambil path file dari multer
 
-    // Tentukan ID pengguna pemilik mobil
-    const ownerId = req.user.role === 'admin' && userId ? userId : req.user.id;
-
-    if (!ownerId || !make || !model || !licensePlate) {
+    if (!make || !model || !licensePlate) {
+        // Jika ada file yang diunggah tapi ada validasi error, hapus file tersebut
+        if (req.file) {
+            fs.unlink(req.file.path, (err) => {
+                if (err) console.error("Gagal menghapus file yang diunggah:", err);
+            });
+        }
         res.status(400);
-        throw new Error('Please add all required fields: userId, make, model, licensePlate');
+        throw new Error('Mohon lengkapi semua bidang yang wajib: Merk, Model, dan Plat Nomor.');
     }
 
-    // Cek apakah plat nomor sudah ada
-    const carExists = await Car.findOne({ where: { licensePlate } });
-    if (carExists) {
+    const existingCar = await Car.findOne({ where: { licensePlate } });
+    if (existingCar) {
+        if (req.file) {
+            fs.unlink(req.file.path, (err) => {
+                if (err) console.error("Gagal menghapus file yang diunggah:", err);
+            });
+        }
         res.status(400);
-        throw new Error('Car with this license plate already exists');
+        throw new Error('Plat nomor ini sudah terdaftar untuk mobil lain.');
     }
 
     const car = await Car.create({
-        userId: ownerId,
+        carId: uuidv4(),
+        userId: req.user.id,
         make,
         model,
-        year,
+        year: year || null,
         licensePlate,
-        color
+        color: color || null,
+        imageUrl: imageUrl // Simpan path file di database
     });
 
     if (car) {
-        res.status(201).json(car);
+        const carData = car.toJSON();
+        if (carData.imageUrl) {
+            carData.imageUrl = `${req.protocol}://${req.get('host')}/uploads/${path.basename(carData.imageUrl)}`;
+        }
+        res.status(201).json(carData);
     } else {
+        if (req.file) {
+            fs.unlink(req.file.path, (err) => {
+                if (err) console.error("Gagal menghapus file yang diunggah:", err);
+            });
+        }
         res.status(400);
-        throw new Error('Invalid car data');
+        throw new Error('Data mobil tidak valid.');
     }
 });
 
-// @desc    Update a car
+// @desc    Update a car for the logged-in user
 // @route   PUT /api/cars/:id
-// @access  Private (Admin, User)
+// @access  Private (User)
 const updateCar = asyncHandler(async (req, res) => {
-    const car = await Car.findByPk(req.params.id);
+    const { make, model, year, licensePlate, color } = req.body;
+    const newImageUrl = req.file ? req.file.path : null; // Ambil path file baru dari multer
+
+    const car = await Car.findOne({
+        where: {
+            carId: req.params.id,
+            userId: req.user.id
+        }
+    });
 
     if (car) {
-        // Hanya admin yang bisa update car milik user lain
-        // User hanya bisa update car miliknya sendiri
-        if (req.user.role === 'admin' || car.userId === req.user.id) {
-            car.make = req.body.make || car.make;
-            car.model = req.body.model || car.model;
-            car.year = req.body.year || car.year;
-            car.licensePlate = req.body.licensePlate || car.licensePlate;
-            car.color = req.body.color || car.color;
-
-            // Jika admin ingin mengubah pemilik mobil
-            if (req.user.role === 'admin' && req.body.userId) {
-                const newOwner = await User.findByPk(req.body.userId);
-                if (newOwner) {
-                    car.userId = req.body.userId;
-                } else {
-                    res.status(400);
-                    throw new Error('New user ID is invalid');
+        // Cek jika plat nomor diubah dan sudah ada di mobil lain
+        if (licensePlate && licensePlate !== car.licensePlate) {
+            const existingCarWithNewLicense = await Car.findOne({ where: { licensePlate } });
+            if (existingCarWithNewLicense && existingCarWithNewLicense.carId !== car.carId) {
+                // Jika ada file baru diunggah tapi validasi gagal, hapus file baru tersebut
+                if (req.file) {
+                    fs.unlink(req.file.path, (err) => {
+                        if (err) console.error("Gagal menghapus file yang diunggah:", err);
+                    });
                 }
+                res.status(400);
+                throw new Error('Plat nomor ini sudah digunakan oleh mobil lain.');
             }
-
-            const updatedCar = await car.save();
-            res.json(updatedCar);
-        } else {
-            res.status(403);
-            throw new Error('Not authorized to update this car');
         }
+
+        // Hapus gambar lama jika ada gambar baru yang diunggah
+        if (newImageUrl && car.imageUrl) {
+            fs.unlink(car.imageUrl, (err) => {
+                if (err) console.error("Gagal menghapus gambar lama:", err);
+            });
+        }
+
+        car.make = make || car.make;
+        car.model = model || car.model;
+        car.year = (year === '' || year === null) ? null : parseInt(year, 10) || car.year;
+        car.licensePlate = licensePlate || car.licensePlate;
+        car.color = color || car.color;
+        car.imageUrl = newImageUrl || car.imageUrl; // Simpan path gambar baru, atau pertahankan yang lama jika tidak ada yang baru diunggah
+
+        const updatedCar = await car.save();
+
+        const carData = updatedCar.toJSON();
+        if (carData.imageUrl) {
+            carData.imageUrl = `${req.protocol}://${req.get('host')}/uploads/${path.basename(carData.imageUrl)}`;
+        }
+        res.json(carData);
     } else {
+        // Jika mobil tidak ditemukan, dan ada file baru diunggah, hapus file tersebut
+        if (req.file) {
+            fs.unlink(req.file.path, (err) => {
+                if (err) console.error("Gagal menghapus file yang diunggah:", err);
+            });
+        }
         res.status(404);
-        throw new Error('Car not found');
+        throw new Error('Mobil tidak ditemukan atau Anda tidak memiliki akses ke mobil ini.');
     }
 });
 
-// @desc    Delete a car
+// @desc    Delete a car for the logged-in user
 // @route   DELETE /api/cars/:id
-// @access  Private (Admin, User)
+// @access  Private (User)
 const deleteCar = asyncHandler(async (req, res) => {
-    const car = await Car.findByPk(req.params.id);
+    const car = await Car.findOne({
+        where: {
+            carId: req.params.id,
+            userId: req.user.id
+        }
+    });
 
     if (car) {
-        // Hanya admin yang bisa menghapus car milik user lain
-        // User hanya bisa menghapus car miliknya sendiri
-        if (req.user.role === 'admin' || car.userId === req.user.id) {
-            await car.destroy();
-            res.json({ message: 'Car removed' });
-        } else {
-            res.status(403);
-            throw new Error('Not authorized to delete this car');
+        // Hapus file gambar terkait jika ada
+        if (car.imageUrl) {
+            fs.unlink(car.imageUrl, (err) => {
+                if (err) console.error("Gagal menghapus gambar mobil:", err);
+            });
         }
+        await car.destroy();
+        res.json({ message: 'Mobil berhasil dihapus.' });
     } else {
         res.status(404);
-        throw new Error('Car not found');
+        throw new Error('Mobil tidak ditemukan atau Anda tidak memiliki akses ke mobil ini.');
     }
 });
 
 module.exports = {
-    getCars,
+    getMyCars,
     getCarById,
-    addCar,
+    createCar,
     updateCar,
     deleteCar
 };

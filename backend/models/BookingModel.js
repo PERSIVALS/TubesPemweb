@@ -7,42 +7,33 @@ const ServiceType = require('./ServiceTypeModel');
 
 const Booking = sequelize.define('Booking', {
     bookingId: {
-        type: DataTypes.UUID,
+        type: DataTypes.CHAR(36), // Konsisten CHAR(36) untuk UUID
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
         allowNull: false,
         unique: true
     },
     userId: {
-        type: DataTypes.UUID,
+        type: DataTypes.CHAR(36), // Konsisten CHAR(36) untuk UUID
         allowNull: false,
-        references: {
-            model: User,
-            key: 'userId'
-        }
+        // references: { model: 'users', key: 'userId' } // <<< HAPUS INI - Ditangani oleh asosiasi di bawah
     },
     carId: {
-        type: DataTypes.UUID,
+        type: DataTypes.CHAR(36), // Konsisten CHAR(36) untuk UUID
         allowNull: false,
-        references: {
-            model: Car,
-            key: 'carId'
-        }
+        // references: { model: 'cars', key: 'carId' } // <<< HAPUS INI - Ditangani oleh asosiasi di bawah
     },
     serviceTypeId: {
-        type: DataTypes.UUID,
+        type: DataTypes.CHAR(36), // Konsisten CHAR(36) untuk UUID
         allowNull: false,
-        references: {
-            model: ServiceType,
-            key: 'serviceTypeId'
-        }
+        // references: { model: 'service_types', key: 'serviceTypeId' } // <<< HAPUS INI - Ditangani oleh asosiasi di bawah
     },
     bookingDate: {
-        type: DataTypes.DATEONLY, // Format YYYY-MM-DD
+        type: DataTypes.DATEONLY,
         allowNull: false
     },
     bookingTime: {
-        type: DataTypes.STRING, // Misalnya "09:00", "14:30"
+        type: DataTypes.STRING,
         allowNull: false
     },
     notes: {
@@ -55,7 +46,7 @@ const Booking = sequelize.define('Booking', {
         allowNull: false
     }
 }, {
-    tableName: 'bookings',
+    tableName: 'bookings', // Pastikan nama tabel
     timestamps: true
 });
 

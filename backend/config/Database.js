@@ -10,6 +10,7 @@ const sequelize = new Sequelize(
         port: process.env.DB_PORT,
         dialect: process.env.DB_DIALECT,
         logging: false, // Set to true to see SQL queries in console
+        // 'define' property was removed by the user in a previous update, keeping it as is.
         pool: {
             max: 5,
             min: 0,
@@ -23,10 +24,16 @@ const connectDB = async () => {
     try {
         await sequelize.authenticate();
         console.log('SQL Database Connected Successfully!');
-        // Synchronize all models (create tables if they don't exist)
-        // BE CAREFUL with { force: true } in production, it will drop existing tables!
-        // Use alter: true to update table structure without dropping data
-        await sequelize.sync({ alter: true });
+        // Import models here if not already imported in server.js to ensure they are defined
+        require('../models/UserModel');
+        require('../models/CarModel');
+        require('../models/ServiceTypeModel');
+        require('../models/BookingModel');
+
+        // *** PENTING: GUNAKAN { force: true } UNTUK DEBUGGING INI ***
+        // Ini akan menghapus tabel yang ada dan membuatnya kembali dari nol.
+        // JANGAN PERNAH DIGUNAKAN DI PRODUKSI!
+        await sequelize.sync({ force: true }); // <--- UBAH DI SINI!
         console.log('All models were synchronized successfully.');
     } catch (error) {
         console.error(`Error connecting to database: ${error.message}`);

@@ -2,12 +2,22 @@
 const User = require('../models/UserModel');
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // Dipakai di UserModel (hook), bukan di controller secara langsung untuk hash password saat create
 
 // Fungsi untuk menghasilkan token JWT
+// id: userId, role: peran user (e.g., 'user', 'admin')
 const generateToken = (id, role) => {
+    // Pastikan JWT_SECRET dan JWT_EXPIRE ada di file .env backend
+    if (!process.env.JWT_SECRET) {
+        console.error("JWT_SECRET is not defined in .env!");
+        throw new Error("Server configuration error: JWT_SECRET missing.");
+    }
+    if (!process.env.JWT_EXPIRE) {
+        console.warn("JWT_EXPIRE is not defined in .env, using default '1h'");
+    }
+
     return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRE,
+        expiresIn: process.env.JWT_EXPIRE || '1h', // Default 1 jam jika tidak diset
     });
 };
 
@@ -17,42 +27,52 @@ const generateToken = (id, role) => {
 const registerUser = asyncHandler(async (req, res) => {
     const { username, email, password, name, phone } = req.body;
 
-    // Cek apakah user sudah ada berdasarkan username atau email
-    const userExists = await User.findOne({ where: { username } });
-    if (userExists) {
+    // --- Validasi Input ---
+    if (!username || !email || !password) {
         res.status(400);
-        throw new Error('Username already exists');
+        throw new Error('Please enter all required fields: username, email, and password.');
     }
 
+    // Cek apakah user sudah ada berdasarkan username
+    const userExistsByUsername = await User.findOne({ where: { username } });
+    if (userExistsByUsername) {
+        res.status(400);
+        throw new Error('Username already exists. Please choose a different one.');
+    }
+
+    // Cek apakah email sudah terdaftar
     const emailExists = await User.findOne({ where: { email } });
     if (emailExists) {
         res.status(400);
-        throw new Error('Email already registered');
+        throw new Error('Email already registered. Please use a different email.');
     }
 
-    // Buat user baru (password akan di-hash oleh hook di model User)
+    // --- Membuat User Baru ---
+    // Password akan di-hash oleh hook `beforeCreate` di model User,
+    // jadi tidak perlu `bcrypt.hash` di sini.
     const user = await User.create({
         username,
         email,
-        password,
+        password, // password akan di-hash oleh hook di model
         name,
         phone,
-        role: 'user' // Default role
+        role: 'user' // Default role untuk pengguna baru adalah 'user'
     });
 
     if (user) {
+        // Jika user berhasil dibuat, kirim respons sukses
         res.status(201).json({
-            userId: user.userId,
+            userId: user.userId, // Pastikan UserModel menghasilkan userId yang valid (misalnya UUID)
             username: user.username,
             email: user.email,
             name: user.name,
             phone: user.phone,
-            role: user.role,
-            token: generateToken(user.userId, user.role),
+            role: user.role, // Penting: ROLE disertakan dalam respons JSON
+            token: generateToken(user.userId, user.role), // Token berisi userId dan role
         });
     } else {
         res.status(400);
-        throw new Error('Invalid user data');
+        throw new Error('Invalid user data received during registration.');
     }
 });
 
@@ -65,19 +85,20 @@ const loginUser = asyncHandler(async (req, res) => {
     // Cari user berdasarkan username
     const user = await User.findOne({ where: { username } });
 
-    // Cek password
+    // Cek password menggunakan method `matchPassword` dari model User
     if (user && (await user.matchPassword(password))) {
         res.json({
             userId: user.userId,
             username: user.username,
             email: user.email,
-            name: user.name,
-            role: user.role,
-            token: generateToken(user.userId, user.role),
+            name: user.name, // Sertakan name di login response
+            phone: user.phone, // Sertakan phone di login response
+            role: user.role, // Penting: ROLE disertakan dalam respons JSON
+            token: generateToken(user.userId, user.role), // Token berisi userId dan role
         });
     } else {
-        res.status(401);
-        throw new Error('Invalid username or password');
+        res.status(401); // Unauthorized
+        throw new Error('Invalid username or password.');
     }
 });
 
@@ -85,8 +106,9 @@ const loginUser = asyncHandler(async (req, res) => {
 // @route   GET /api/auth/me
 // @access  Private
 const getUserProfile = asyncHandler(async (req, res) => {
-    // req.user sudah diset oleh authMiddleware (berisi userId dari token)
-    const user = await User.findByPk(req.user.id, { // Menggunakan findByPk untuk mencari berdasarkan primary key
+    // req.user diset oleh authMiddleware (berisi id dan role dari token)
+    // Pastikan authMiddleware melampirkan 'id' sebagai primary key yang benar (userId)
+    const user = await User.findByPk(req.user.id, {
         attributes: { exclude: ['password'] } // Jangan kirim password
     });
 
@@ -103,7 +125,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
         });
     } else {
         res.status(404);
-        throw new Error('User not found');
+        throw new Error('User not found.');
     }
 });
 
@@ -111,16 +133,19 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // @route   PUT /api/auth/me
 // @access  Private
 const updateUserProfile = asyncHandler(async (req, res) => {
+    // req.user.id berasal dari token yang didecode di authMiddleware
     const user = await User.findByPk(req.user.id);
 
     if (user) {
+        // Hanya update field yang ada di body request
         user.username = req.body.username || user.username;
         user.email = req.body.email || user.email;
         user.name = req.body.name || user.name;
         user.phone = req.body.phone || user.phone;
 
+        // Jika password baru disediakan, itu akan di-hash oleh hook `beforeUpdate` di model User
         if (req.body.password) {
-            user.password = req.body.password; // Hook `beforeUpdate` akan menghashnya
+            user.password = req.body.password;
         }
 
         const updatedUser = await user.save(); // Simpan perubahan
@@ -136,7 +161,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
         });
     } else {
         res.status(404);
-        throw new Error('User not found');
+        throw new Error('User not found.');
     }
 });
 

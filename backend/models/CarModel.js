@@ -1,23 +1,20 @@
 // backend/models/CarModel.js
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/Database');
-const User = require('./UserModel'); // Import User model untuk relasi
+const User = require('./UserModel'); // Import UserModel untuk asosiasi
 
-const Car = sequelize.define('Car', {
+const Car = sequelize.define('cars', { // Nama tabel 'cars'
     carId: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
+        type: DataTypes.CHAR(36), // Konsisten CHAR(36) untuk UUID
         primaryKey: true,
+        defaultValue: DataTypes.UUIDV4,
         allowNull: false,
         unique: true
     },
     userId: {
-        type: DataTypes.UUID,
+        type: DataTypes.CHAR(36), // Konsisten CHAR(36) untuk UUID
         allowNull: false,
-        references: {
-            model: User, // Foreign key ke tabel User
-            key: 'userId'
-        }
+        // references: { model: 'users', key: 'userId' } // <<< HAPUS INI - Ditangani oleh asosiasi di bawah
     },
     make: {
         type: DataTypes.STRING,
@@ -29,28 +26,29 @@ const Car = sequelize.define('Car', {
     },
     year: {
         type: DataTypes.INTEGER,
-        allowNull: true,
-        validate: {
-            min: 1900,
-            max: new Date().getFullYear() + 1 // Tahun maksimal bisa tahun sekarang + 1
-        }
+        allowNull: true
     },
     licensePlate: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
+        unique: true // Hanya satu unique key untuk licensePlate
     },
     color: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    imageUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null
     }
 }, {
-    tableName: 'cars',
+    freezeTableName: true, // Nama tabel tidak diubah Sequelize
     timestamps: true
 });
 
-// Definisikan relasi (1 User punya banyak Cars)
-User.hasMany(Car, { foreignKey: 'userId', as: 'cars' });
-Car.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+// Definisikan asosiasi
+Car.belongsTo(User, { foreignKey: 'userId', as: 'user', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
+User.hasMany(Car, { foreignKey: 'userId', as: 'cars', onDelete: 'CASCADE', onUpdate: 'CASCADE' });
 
 module.exports = Car;

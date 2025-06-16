@@ -4,7 +4,7 @@ const { sequelize } = require('../config/Database');
 
 const ServiceType = sequelize.define('ServiceType', {
     serviceTypeId: {
-        type: DataTypes.UUID,
+        type: DataTypes.CHAR(36), // Konsisten CHAR(36) untuk UUID
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
         allowNull: false,
@@ -13,14 +13,17 @@ const ServiceType = sequelize.define('ServiceType', {
     name: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
+        unique: true, // Hanya satu unique key untuk name
+        validate: {
+            notEmpty: true
+        }
     },
     description: {
         type: DataTypes.TEXT,
         allowNull: true
     },
     price: {
-        type: DataTypes.DECIMAL(10, 2), // 10 total digit, 2 digit di belakang koma
+        type: DataTypes.DECIMAL(10, 2),
         allowNull: false,
         validate: {
             isDecimal: true,
@@ -28,7 +31,7 @@ const ServiceType = sequelize.define('ServiceType', {
         }
     }
 }, {
-    tableName: 'service_types',
+    tableName: 'service_types', // Pastikan nama tabel
     timestamps: true
 });
 

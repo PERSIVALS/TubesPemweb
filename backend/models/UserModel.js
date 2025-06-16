@@ -1,11 +1,11 @@
 // backend/models/UserModel.js
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/Database');
-const bcrypt = require('bcryptjs'); // Dipakai di hooks dan method prototype
+const bcrypt = require('bcryptjs');
 
 const User = sequelize.define('User', {
     userId: {
-        type: DataTypes.UUID,
+        type: DataTypes.CHAR(36), // Konsisten menggunakan CHAR(36) untuk UUID
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
         allowNull: false,
@@ -14,7 +14,7 @@ const User = sequelize.define('User', {
     username: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
+        unique: true, // Hanya satu unique key untuk username
         validate: {
             notEmpty: true
         }
@@ -22,7 +22,7 @@ const User = sequelize.define('User', {
     email: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
+        unique: true, // Hanya satu unique key untuk email
         validate: {
             isEmail: true,
             notEmpty: true
@@ -49,15 +49,15 @@ const User = sequelize.define('User', {
         allowNull: false
     }
 }, {
-    tableName: 'users', // Nama tabel di database
-    timestamps: true, // `createdAt` dan `updatedAt` otomatis
+    tableName: 'users', // Pastikan nama tabel
+    timestamps: true,
     hooks: {
         beforeCreate: async (user) => {
             const salt = await bcrypt.genSalt(10);
             user.password = await bcrypt.hash(user.password, salt);
         },
         beforeUpdate: async (user) => {
-            if (user.changed('password')) { // Hanya hash jika password berubah
+            if (user.changed('password')) {
                 const salt = await bcrypt.genSalt(10);
                 user.password = await bcrypt.hash(user.password, salt);
             }
@@ -65,7 +65,6 @@ const User = sequelize.define('User', {
     }
 });
 
-// Method untuk membandingkan password
 User.prototype.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
