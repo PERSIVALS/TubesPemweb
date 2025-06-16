@@ -8,50 +8,90 @@ const AdminDashboardPage = () => {
 
     return (
         <div className="container p-4">
-            <h1 className="title is-2 has-text-primary mb-4">Admin Dashboard</h1>
+            {/* Judul Dashboard */}
+            <h1 className="title is-2 has-text-primary mb-4 has-text-weight-bold">Admin Dashboard</h1>
             <p className="subtitle is-4 has-text-light mb-5">
-                Welcome, <strong className="has-text-primary is-capitalized">{user?.name || user?.username}</strong>!
+                Selamat datang, <strong className="has-text-primary is-capitalized">{user?.name || user?.username}</strong>!
             </p>
 
+            {/* Bagian Kartu Manajemen */}
             <div className="columns is-multiline">
+                {/* Kartu Manage Users */}
                 <div className="column is-one-third">
-                    <div className="box has-background-dark p-5">
-                        <p className="title is-4 has-text-light">Manage Users</p>
-                        <p className="subtitle is-6 has-text-grey-light">View, create, edit, or delete user accounts.</p>
-                        <Link to="/admin/users" className="button is-primary is-small is-rounded">
-                            Go to Users
-                        </Link>
+                    <div className="card has-background-dark-lighter has-text-light p-5 has-shadow-md is-rounded-lg">
+                        <div className="card-content">
+                            <p className="title is-4 has-text-light mb-3 has-text-weight-semibold">Manage Users</p>
+                            <p className="subtitle is-6 has-text-grey-light mb-4">Lihat, buat, edit, atau hapus akun pengguna.</p>
+                            <Link to="/admin/users" className="button is-primary is-small is-rounded has-text-weight-bold has-shadow-sm">
+                                <span className="icon is-small">
+                                    <i className="fas fa-users"></i>
+                                </span>
+                                <span>Go to Users</span>
+                            </Link>
+                        </div>
                     </div>
                 </div>
+
+                {/* Kartu Service Types */}
                 <div className="column is-one-third">
-                    <div className="box has-background-dark p-5">
-                        <p className="title is-4 has-text-light">Service Types</p>
-                        <p className="subtitle is-6 has-text-grey-light">Define and manage available service categories.</p>
-                        <Link to="/admin/service-types" className="button is-primary is-small is-rounded">
-                            Go to Service Types
-                        </Link>
+                    <div className="card has-background-dark-lighter has-text-light p-5 has-shadow-md is-rounded-lg">
+                        <div className="card-content">
+                            <p className="title is-4 has-text-light mb-3 has-text-weight-semibold">Service Types</p>
+                            <p className="subtitle is-6 has-text-grey-light mb-4">Definisikan dan kelola kategori layanan yang tersedia.</p>
+                            <Link to="/admin/service-types" className="button is-primary is-small is-rounded has-text-weight-bold has-shadow-sm">
+                                <span className="icon is-small">
+                                    <i className="fas fa-tools"></i>
+                                </span>
+                                <span>Go to Service Types</span>
+                            </Link>
+                        </div>
                     </div>
                 </div>
+
+                {/* Kartu Manage Bookings */}
                 <div className="column is-one-third">
-                    <div className="box has-background-dark p-5">
-                        <p className="title is-4 has-text-light">Manage Bookings</p>
-                        <p className="subtitle is-6 has-text-grey-light">Overview and control all service appointments.</p>
-                        <Link to="/admin/bookings" className="button is-primary is-small is-rounded">
-                            Go to Bookings
-                        </Link>
+                    <div className="card has-background-dark-lighter has-text-light p-5 has-shadow-md is-rounded-lg">
+                        <div className="card-content">
+                            <p className="title is-4 has-text-light mb-3 has-text-weight-semibold">Manage Bookings</p>
+                            <p className="subtitle is-6 has-text-grey-light mb-4">Ringkasan dan kontrol semua janji temu layanan.</p>
+                            <Link to="/admin/bookings" className="button is-primary is-small is-rounded has-text-weight-bold has-shadow-sm">
+                                <span className="icon is-small">
+                                    <i className="fas fa-calendar-alt"></i>
+                                </span>
+                                <span>Go to Bookings</span>
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="box has-background-dark p-5 mt-5">
-                <h3 className="title is-4 has-text-light">System Overview (Placeholder)</h3>
-                <p className="has-text-grey-light">This section will show key metrics and recent activity for the car service app.</p>
-                <ul>
-                    <li className="has-text-grey-light mt-3"><span className="icon mr-2"><i className="fas fa-users"></i></span>Total Users: <strong>[N/A]</strong></li>
-                    <li className="has-text-grey-light"><span className="icon mr-2"><i className="fas fa-calendar-check"></i></span>Pending Bookings: <strong>[N/A]</strong></li>
-                    <li className="has-text-grey-light"><span className="icon mr-2"><i className="fas fa-money-bill-wave"></i></span>Estimated Revenue (Month): <strong>[N/A]</strong></li>
-                </ul>
+            {/* Bagian System Overview */}
+            <div className="box has-background-dark p-5 mt-6 has-shadow-md is-rounded-lg">
+                <h3 className="title is-4 has-text-light mb-4 has-text-weight-semibold">System Overview</h3>
+                <p className="has-text-grey-light subtitle is-6 mb-4">Bagian ini akan menampilkan metrik kunci dan aktivitas terbaru untuk aplikasi layanan mobil.</p>
+                <div className="content">
+                    <ul className="dashboard-stats">
+                        <li className="has-text-grey-light mb-2 is-flex is-align-items-center">
+                            <span className="icon is-medium mr-3 has-text-primary-light"><i className="fas fa-users fa-lg"></i></span>
+                            <span className="is-size-5 has-text-weight-medium">Total Users:</span> <strong className="ml-2 has-text-light">[N/A]</strong>
+                        </li>
+                        <li className="has-text-grey-light mb-2 is-flex is-align-items-center">
+                            <span className="icon is-medium mr-3 has-text-warning-light"><i className="fas fa-calendar-check fa-lg"></i></span>
+                            <span className="is-size-5 has-text-weight-medium">Pending Bookings:</span> <strong className="ml-2 has-text-light">[N/A]</strong>
+                        </li>
+                        <li className="has-text-grey-light mb-2 is-flex is-align-items-center">
+                            <span className="icon is-medium mr-3 has-text-success-light"><i className="fas fa-money-bill-wave fa-lg"></i></span>
+                            <span className="is-size-5 has-text-weight-medium">Estimated Revenue (Month):</span> <strong className="ml-2 has-text-light">[N/A]</strong>
+                        </li>
+                    </ul>
+                </div>
             </div>
+
+            {/* Catatan: Untuk fitur "Recent Activity" yang sebenarnya di Admin Dashboard,
+                Anda perlu membuat komponen terpisah dan mengambil data yang relevan
+                dari backend (misalnya, booking terbaru dari semua user).
+                Placeholder di atas hanya untuk metrik statis.
+            */}
         </div>
     );
 };

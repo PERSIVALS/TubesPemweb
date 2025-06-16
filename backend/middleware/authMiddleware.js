@@ -14,34 +14,53 @@ const protect = asyncHandler(async (req, res, next) => {
             // Verify token
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            // Get user from the token (find by userId from the decoded token)
-            // decoded.id harus cocok dengan primary key (userId) di model User
-            req.user = await User.findByPk(decoded.id, {
-                attributes: { exclude: ['password'] } // Jangan kirim password
+            // Penting: Pastikan payload token berisi 'id' dan 'role'
+            // Di AuthController, generateToken(user.userId, user.role) berarti 'id' adalah userId.
+            if (!decoded.id || !decoded.role) {
+                res.status(401);
+                throw new Error('Token tidak valid: payload ID atau Role missing.');
+            }
+
+            // Ambil user dari database menggunakan ID yang didecode dari token
+            // Kita ambil data user lengkap (tanpa password) dan tambahkan ke req.user
+            const userFromDb = await User.findByPk(decoded.id, {
+                attributes: { exclude: ['password'] }
             });
 
-            if (!req.user) {
+            if (!userFromDb) {
                 res.status(401);
-                throw new Error('Not authorized, user not found');
+                throw new Error('Tidak terotorisasi, user tidak ditemukan di database.');
             }
+
+            // Set req.user dengan data yang relevan dari userFromDb
+            // Ini akan memastikan req.user memiliki properti userId dan role yang bisa diakses
+            req.user = {
+                id: userFromDb.userId, // Pastikan ini adalah userId dari DB
+                role: userFromDb.role,
+                username: userFromDb.username, // Anda bisa menambahkan properti lain yang diperlukan
+                email: userFromDb.email
+                // Jangan sertakan password atau data sensitif lainnya
+            };
 
             next();
         } catch (error) {
-            console.error(error);
+            console.error("Auth middleware error:", error); // Log error lebih spesifik
             res.status(401);
-            throw new Error('Not authorized, token failed');
+            throw new Error('Tidak terotorisasi, token gagal atau tidak valid.');
         }
     }
 
     if (!token) {
         res.status(401);
-        throw new Error('Not authorized, no token');
+        throw new Error('Tidak terotorisasi, tidak ada token.');
     }
 });
 
 const authorizeRoles = (...roles) => {
     return (req, res, next) => {
-        if (!req.user || !roles.includes(req.user.role)) { // Pastikan req.user ada
+        // req.user harus sudah diset oleh middleware protect sebelumnya
+        // req.user.role diakses dari objek yang kita buat di middleware protect
+        if (!req.user || !roles.includes(req.user.role)) {
             res.status(403);
             throw new Error(`User with role ${req.user ? req.user.role : 'unknown'} is not authorized to access this route`);
         }

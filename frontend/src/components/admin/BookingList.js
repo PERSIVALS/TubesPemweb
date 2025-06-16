@@ -1,79 +1,108 @@
+// frontend/src/components/admin/BookingList.js
 import React from 'react';
 
 const BookingList = ({ bookings, onStatusUpdate, onDelete, onViewDetails }) => {
-    const getStatusBadgeColor = (status) => {
-        switch (status) {
-            case 'pending': return 'bg-yellow-100 text-yellow-800';
-            case 'confirmed': return 'bg-blue-100 text-blue-800';
-            case 'completed': return 'bg-green-100 text-green-800';
-            case 'cancelled': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
+    if (bookings.length === 0) {
+        return (
+            <div className="notification is-info is-light has-text-centered p-5 is-rounded-lg">
+                <p className="title is-4 has-text-info">
+                    <span className="icon is-large mb-2">
+                        <i className="fas fa-calendar-alt"></i>
+                    </span>
+                    <br />
+                    Tidak ada pemesanan yang ditemukan.
+                </p>
+                <p className="subtitle is-6 has-text-info-dark mt-3">
+                    Coba ubah filter status atau tambahkan pemesanan baru.
+                </p>
+            </div>
+        );
+    }
+
+    // Opsi status untuk dropdown di tabel
+    const statusOptions = [
+        { value: 'pending', label: 'Pending' },
+        { value: 'confirmed', label: 'Confirmed' },
+        { value: 'completed', label: 'Completed' },
+        { value: 'cancelled', label: 'Cancelled' }
+    ];
 
     return (
-        <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+        <div className="table-container">
+            <table className="table is-fullwidth is-striped is-hoverable has-background-dark has-text-light">
+                <thead>
                     <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date/Time
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Customer
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Service
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                        </th>
+                        <th>ID Booking</th>
+                        <th>Tanggal</th>
+                        <th>Waktu</th>
+                        <th>User</th>
+                        <th>Mobil</th>
+                        <th>Layanan</th>
+                        <th>Status</th>
+                        <th className="has-text-centered">Aksi</th>
                     </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody>
                     {bookings.map((booking) => (
                         <tr key={booking.bookingId}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                                {new Date(booking.appointmentDate).toLocaleDateString()}<br/>
-                                {booking.appointmentTime}
+                            <td className="has-text-light is-vcentered is-size-7">{booking.bookingId.substring(0, 8)}...</td> {/* Tampilkan sebagian ID */}
+                            <td className="has-text-light is-vcentered">
+                                {new Date(booking.bookingDate).toLocaleDateString('id-ID')}
                             </td>
-                            <td className="px-6 py-4">
-                                {booking.user.name}<br/>
-                                <span className="text-sm text-gray-500">{booking.user.email}</span>
+                            <td className="has-text-light is-vcentered">{booking.bookingTime}</td>
+                            <td className="has-text-light is-vcentered">
+                                {/* Asumsi booking memiliki relasi user yang dimuat (e.g., include: User di controller) */}
+                                {booking.user ? booking.user.username : 'N/A'}
                             </td>
-                            <td className="px-6 py-4">
-                                {booking.serviceType.name}
+                            <td className="has-text-light is-vcentered">
+                                {/* Asumsi booking memiliki relasi car yang dimuat */}
+                                {booking.car ? `${booking.car.make} (${booking.car.licensePlate})` : 'N/A'}
                             </td>
-                            <td className="px-6 py-4">
-                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(booking.status)}`}>
-                                    {booking.status}
-                                </span>
+                            <td className="has-text-light is-vcentered">
+                                {/* Asumsi booking memiliki relasi serviceType yang dimuat */}
+                                {booking.serviceType ? booking.serviceType.name : 'N/A'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <td className="is-vcentered">
+                                {/* Dropdown untuk mengubah status */}
+                                <div className="select is-small is-dark">
+                                    <select
+                                        value={booking.status}
+                                        onChange={(e) => onStatusUpdate(booking.bookingId, e.target.value)}
+                                        className={`has-background-${
+                                            booking.status === 'pending' ? 'warning' :
+                                            booking.status === 'confirmed' ? 'info' :
+                                            booking.status === 'completed' ? 'success' :
+                                            'danger'
+                                        }`}
+                                    >
+                                        {statusOptions.map(option => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </td>
+                            <td className="has-text-centered is-vcentered is-nowrap">
+                                {/* Tombol Detail */}
                                 <button
+                                    className="button is-primary is-small is-rounded mr-2 has-shadow-sm"
                                     onClick={() => onViewDetails(booking)}
-                                    className="text-indigo-600 hover:text-indigo-900 mr-3"
                                 >
-                                    Details
+                                    <span className="icon is-small">
+                                        <i className="fas fa-eye"></i>
+                                    </span>
+                                    <span>Detail</span>
                                 </button>
-                                <select
-                                    value={booking.status}
-                                    onChange={(e) => onStatusUpdate(booking.bookingId, e.target.value)}
-                                    className="mr-3 text-sm border rounded"
-                                >
-                                    <option value="pending">Pending</option>
-                                    <option value="confirmed">Confirmed</option>
-                                    <option value="completed">Completed</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
+                                {/* Tombol Delete */}
                                 <button
+                                    className="button is-danger is-small is-rounded has-shadow-sm"
                                     onClick={() => onDelete(booking.bookingId)}
-                                    className="text-red-600 hover:text-red-900"
                                 >
-                                    Delete
+                                    <span className="icon is-small">
+                                        <i className="fas fa-trash-alt"></i>
+                                    </span>
+                                    <span>Hapus</span>
                                 </button>
                             </td>
                         </tr>

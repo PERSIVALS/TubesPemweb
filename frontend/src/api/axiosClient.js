@@ -1,54 +1,58 @@
-// frontend/src/api/axiosClient.js
-import axios from 'axios';
-import { jwtDecode } from 'jwt-decode'; // Perbaikan: import { jwtDecode } dari jwt-decode
+    // frontend/src/api/axiosClient.js
+    import axios from 'axios';
+    import { jwtDecode } from 'jwt-decode';
 
-// Buat instance Axios dengan base URL dari environment variable
-const axiosClient = axios.create({
-    baseURL: process.env.REACT_APP_API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-});
+    const axiosClient = axios.create({
+        baseURL: process.env.REACT_APP_API_BASE_URL,
+        headers: {
+            // Biarkan Axios secara otomatis mengatur Content-Type untuk FormData
+        },
+    });
 
-// Interceptor untuk menambahkan token ke setiap request yang memerlukan otorisasi
-axiosClient.interceptors.request.use(config => {
-    const token = localStorage.getItem('token'); // Ambil token dari localStorage
-    if (token) {
-        // Cek apakah token sudah expired sebelum mengirim request
-        try {
-            const decoded = jwtDecode(token); // Perbaikan: gunakan jwtDecode
-            if (decoded.exp * 1000 < Date.now()) {
-                // Token expired, hapus dari localStorage dan jangan sertakan
+    axiosClient.interceptors.request.use(config => {
+        const token = localStorage.getItem('token');
+
+        console.log('--- AXIOS INTERCEPTOR REQUEST ---');
+        console.log('Token from localStorage:', token ? 'ADA' : 'TIDAK ADA');
+
+        if (token) {
+            try {
+                const decoded = jwtDecode(token);
+                if (decoded.exp * 1000 < Date.now()) {
+                    console.warn('Token KEDALUWARSA. Menghapus token dan membatalkan request.');
+                    localStorage.removeItem('token');
+                    // Tambahkan navigasi ke halaman login di sini jika Anda ingin langsung mengarahkan user
+                    // window.location.href = '/login'; // Hanya contoh, AuthContext Anda sudah menangani logout
+                    return Promise.reject(new Error('Token kedaluwarsa. Mohon login kembali.'));
+                }
+                config.headers.Authorization = `Bearer ${token}`;
+                console.log('Header Authorization berhasil ditambahkan.');
+            } catch (error) {
+                console.error('Gagal mendekode atau token tidak valid:', error);
                 localStorage.removeItem('token');
-                // Di sini Anda bisa memicu logout atau refresh otomatis jika ada
-                console.warn('Token expired, user will be logged out.');
-                return Promise.reject(new Error('Token expired. Please login again.'));
+                // window.location.href = '/login'; // Contoh: Arahkan ke login jika token rusak
+                return Promise.reject(new Error('Token tidak valid. Mohon login kembali.'));
             }
-        } catch (error) {
-            console.error('Failed to decode token or token is invalid:', error);
-            localStorage.removeItem('token');
-            return Promise.reject(new Error('Invalid token. Please login again.'));
+        } else {
+            console.log('Tidak ada token di localStorage, header Authorization TIDAK ditambahkan.');
         }
-        config.headers.Authorization = `Bearer ${token}`; // Tambahkan header Authorization
-    }
-    return config;
-}, error => {
-    return Promise.reject(error);
-});
-
-// Interceptor untuk menangani respons error dari API
-axiosClient.interceptors.response.use(
-    response => response,
-    error => {
-        // Jika respons 401 Unauthorized, mungkin token tidak valid di backend
-        if (error.response && error.response.status === 401) {
-            console.error('Unauthorized request. Token might be invalid or missing.');
-            localStorage.removeItem('token'); // Hapus token
-            // Arahkan user ke halaman login (AuthContext akan menangani ini)
-            // Ini akan dipicu oleh AuthContext yang mendeteksi perubahan `user` menjadi null
-        }
+        // console.log('Final Request Config:', config); // Hati-hati, ini bisa panjang
+        return config;
+    }, error => {
         return Promise.reject(error);
-    }
-);
+    });
 
-export default axiosClient;
+    axiosClient.interceptors.response.use(
+        response => response,
+        error => {
+            if (error.response && error.response.status === 401) {
+                console.error('Request tidak terotorisasi (401). Token mungkin tidak valid/hilang. Melakukan logout otomatis.');
+                localStorage.removeItem('token');
+                // AuthContext Anda akan menangani navigasi ke halaman login
+            }
+            return Promise.reject(error);
+        }
+    );
+
+    export default axiosClient;
+    
