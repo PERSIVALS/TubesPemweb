@@ -25,53 +25,53 @@ const AddUserForm = ({ onAdd, onClose }) => {
             <div className="bg-white rounded-lg p-8 max-w-md w-full">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold">Add New User</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+                    <button onClick={onClose} className="text-black hover:text-black">✕</button>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Name</label>
+                        <label className="block text-black text-sm font-bold mb-2">Name</label>
                         <input
                             type="text"
                             name="name"
                             value={formData.name}
                             onChange={handleChange}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black"
                             required
                         />
                     </div>
 
                     <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                        <label className="block text-black text-sm font-bold mb-2">Email</label>
                         <input
                             type="email"
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black"
                             required
                         />
                     </div>
 
                     <div className="mb-4">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                        <label className="block text-black text-sm font-bold mb-2">Password</label>
                         <input
                             type="password"
                             name="password"
                             value={formData.password}
                             onChange={handleChange}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700"
+                            className="shadow appearance-none border rounded w-full py-2 px-3 text-black"
                             required
                         />
                     </div>
 
                     <div className="mb-6">
-                        <label className="block text-gray-700 text-sm font-bold mb-2">Role</label>
+                        <label className="block text-black text-sm font-bold mb-2">Role</label>
                         <select
                             name="role"
                             value={formData.role}
                             onChange={handleChange}
-                            className="shadow border rounded w-full py-2 px-3 text-gray-700"
+                            className="shadow border rounded w-full py-2 px-3 text-black"
                         >
                             <option value="user">User</option>
                             <option value="admin">Admin</option>
